@@ -3,6 +3,7 @@
 # Then follow the manual to check and run the pipeline:
 #   https://books.ropensci.org/targets/walkthrough.html#inspect-the-pipeline # nolint
 
+
 # Load packages required to define the pipeline:
 library(targets)
 library(qualtRics)
@@ -45,7 +46,6 @@ tar_source()
 
 # Setup
 
-
 setup <- list(
   tar_target(
     data_folder,
@@ -55,15 +55,32 @@ setup <- list(
     )
   ),
   tar_target(
-    data,
+    global_data,
     drop_first_two_rows(
       paste0(
         data_folder,
-        "Feb 2nd 2023 Data Run.xls"
+        "SL Data Files/Global Survey Part 2_March 2, 2023_10.10.csv"
+      )
+    )
+  ),
+  tar_target(
+    se_inc_data,
+    drop_first_two_rows(
+      paste0(
+        data_folder,
+        "Final Data Files/South East Asian Inclusivity Research_February 28, 2023_12.42.csv"
       )
     )
   )
 )
+
+
+
+
+
+
+
+
 
 # targets workflow ----
 list(
