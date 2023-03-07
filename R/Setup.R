@@ -5,3 +5,5 @@ drop_first_two_rows <- function(file_path) {
   data <- data[-c(1,2),]
   return(data)
 }
+
+#SE data manipulation

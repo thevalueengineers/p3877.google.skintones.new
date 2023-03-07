@@ -64,11 +64,20 @@ setup <- list(
     )
   ),
   tar_target(
-    se_inc_data,
+    se_data,
     drop_first_two_rows(
       paste0(
         data_folder,
         "Final Data Files/South East Asian Inclusivity Research_February 28, 2023_12.42.csv"
+      )
+    )
+  ),
+  tar_target(
+    eu_data,
+    drop_first_two_rows(
+      paste0(
+        data_folder,
+        "Final Data Files/European Inclusivity Research_March 3, 2023_13.14.csv"
       )
     )
   )

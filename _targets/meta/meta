@@ -2,7 +2,10 @@ name|type|data|command|depend|seed|path|time|size|bytes|format|repository|iterat
 data|stem|40b9b2a628477c58|64d703b0679df6a6|01d5cc640e92d0a5|1588979285||t19397.641539714s|54bc641630e8a13a|3706|rds|local|vector|||0.14||
 data_folder|stem|4f53a1e787f8d216|7c5367b037e9472b|3bbf3c678d05c382|-1589943188||t19423.4600920117s|2059933ece86081f|158|rds|local|vector|||2.89|package dplyr was built under R version 4.2.2. package stringr was built under R version 4.2.2. package tidyr was built under R version 4.2.2. package ggplot2 was built under R version 4.2.2. package effects was built under R version 4.2.2. package carData was built under R version 4.2.2. package glmnet was built under R version 4.2.2. package car was built under R version 4.2.2. package broom was built under R version 4.2.2. package tidyverse was built under R version 4.2.2. package tibble was built under R version 4.2.2. package purrr was built under R version 4.2.2. package forcats was built under R version 4.2.2. package caret was built under R version 4.2.2. package weights was built under R version 4.2.2. package Hmisc was built under R version 4.2.2. package Formula was built under R version 4.2.2. package multcompView was built under R version 4.2.2. package agricolae was built under R version 4.2.2|
 drop_first_two_rows|function|e117fef31b03eaae|||||||||||||||
+eu_data|stem|15d6c72656103f9d|29503e18698b8fd7|46e47721cec39eb6|1294849305||t19423.4837248147s|606873f2c507f3b8|749398|rds|local|vector|||1.03||
 global_data|stem|5fa7930321539750|e22d3fd0275ebcad|46e47721cec39eb6|-663389439||t19423.4608122479s|61e5cec22d4a7469|16760|rds|local|vector|||0.48||
+logit2prob|function|1b1867a35d371e58|||||||||||||||
 model|stem|c4164d976bc69d66|ae83bc723fe2997c|60fe1611c5290683|1816327236||t19397.608431751s|241bf920421d9078|105|rds|local|vector|||0||
+se_data|stem|f63a5b261f027fcb|f6d08d3f0fc77a2d|46e47721cec39eb6|1273818714||t19423.4837300912s|24d75429edfd4b4a|241213|rds|local|vector|||0.34|embedded nuls found in input|
 se_inc_data|stem|f63a5b261f027fcb|f6d08d3f0fc77a2d|46e47721cec39eb6|-1048272990||t19423.4612935046s|24d75429edfd4b4a|241213|rds|local|vector|||0.66|embedded nuls found in input|
-setup|object|facf19b2a10eed18|||||||||||||||
+setup|object|e5d6e25079aa377b|||||||||||||||
