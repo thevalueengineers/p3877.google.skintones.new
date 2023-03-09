@@ -6,4 +6,4 @@ drop_first_two_rows <- function(file_path) {
   return(data)
 }
 
-#SE data manipulation
+#se data manipulation

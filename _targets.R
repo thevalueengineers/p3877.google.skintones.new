@@ -6,9 +6,7 @@
 
 # Load packages required to define the pipeline:
 library(targets)
-library(qualtRics)
 library(tveDataLoader)
-library(readxl)
 
 # library(tarchetypes) # Load other packages as needed. # nolint
 
