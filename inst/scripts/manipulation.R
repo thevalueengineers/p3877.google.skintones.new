@@ -4,85 +4,147 @@ library(targets)
 library(stringr)
 library(purrr)
 library(stats)
+library(car)
+library(tidyr)
+library(corrplot)
 
 tar_load(se_data)
 
 #names to lower
 names(se_data) <- tolower(names(se_data))
 
+#create list of each of the questions for each group
+
 skin_rep_own <- c("q14","q27","qid46","q66")
 skin_rep_community <- c("q15","q28","q50","q65")
 skin_rep_country <- c("q16","q29","q49","q64")
 confident_picked_owntone <- c("q23","q36","q42","q57")
-confident_picked_owntone <- c("q23","q36","q42","q57")
-closest_skin_tone <- c("q9","q37","q203","q199")
 
-se_data <-se_data %>%
+closest_skin_tone <- c("q9","q37","q203","q199")
+easy_to_find_owntone <- c("q24","q39","q53","q69")
+
+too_many_options <- c("q17","q30","q48","q63")
+too_few_options <- c("q19","q31","q47","q62")
+scale_rep_light <- c("q20","q33","q46","q61")
+scale_rep_medium <- c("q21","q32","q45","q60")
+scale_rep_dark <- c("q22","q34","q44","q59")
+scale_rep_undertones <- c("q18","q35","q43","q58")
+
+#create list of all the groupings together for primary research question
+
+primarylist <- c(skin_rep_own,skin_rep_community,skin_rep_country,confident_picked_owntone,
+                 easy_to_find_owntone,too_many_options,too_few_options,
+                 scale_rep_light,scale_rep_medium,scale_rep_dark,scale_rep_undertones)
+
+skin_replist  <- c(skin_rep_own,skin_rep_community,skin_rep_country,scale_rep_light,scale_rep_medium,scale_rep_dark,scale_rep_undertones)
+
+#convert subgroups to factors
+
+se_data <- se_data %>%
   mutate(across(where(is.character), str_trim)) %>%
   #convert age to numeric
   mutate(age=as.numeric(q2)) %>%
   #recode gender
-  mutate(gender1 = as.factor(ifelse(q3 == "Man","Male","Not Male"))) %>%
+  mutate(gender = as.factor(ifelse(q3 == "Man","Male","Not Male"))) %>%
   #convert market to factor
-  mutate(q83 = factor(q83))
+  mutate(market = factor(q83)) %>%
+  #makeuponline
+  mutate(makeup_online = factor(q72)) %>%
+  #sun precautions
+  mutate(sun_precautions = factor(q74))
 
-  #agreement scales to numeric
-skin_rep_own_dat <- se_data %>%
-    select(all_of(skin_rep_own)) %>%
+covariateslist <- c(age,gender,makeup_online,sun_precautions)
+
+  #agreement scales (includin easy  to difficult) to numeric
+se_data <- se_data %>%
+    select(all_of(primarylist)) %>%
   map_dfc(~ case_when(
-    .x == 'Strongly agree' ~ 2,
-    .x =='Somewhat agree' ~ 1,
-    .x =='Neither agree nor disagree' ~ 0,
-    .x =='Somewhat disagree' ~ -1,
-    .x =='Strongly disagree' ~ -2,
+    .x %in% c('Strongly agree' | 'Very easy') ~ 2,
+    .x %in% c('Somewhat agree' | 'Somewhat easy') ~ 1,
+    .x %in% c('Neither agree nor disagree' | 'Neither easy nor difficult') ~ 0,
+    .x %in% c('Somewhat disagree' | 'Somewhat difficult') ~ -1,
+    .x %in% c('Strongly disagree' | 'Very difficult') ~ -2,
     TRUE ~ 0
-  ), .cols = skin_rep_own) %>%
-  set_names(paste0(skin_rep_own, "_n")) %>%
+  ), .cols = primarylist) %>%
+  set_names(paste0(primarylist, "_n"))%>%
   bind_cols(se_data)
+
+#check recoding as worked - looks good - 48 columns
+
+select(se_data,ends_with("_n"))
+
+#create top box variables
+
+primarylist_n <-  paste0(primarylist, "_n")
+
+se_data <- se_data %>%
+  select(all_of(primarylist_n)) %>%
+  map_dfc(~ case_when(
+    .x == 2 ~1,
+    TRUE ~ 0
+  ), .cols = primarylist_n) %>%
+  set_names(paste0(primarylist_n, "tb")) %>%
+  bind_cols(se_data)
+
+#check the top boxes are lining up with 2s
+select(se_data,c(ends_with("_ntb")|ends_with("_n"))) %>%   select(order(readr::parse_number(names(.))))
+
+#correlations
+
+matrix <- se_data %>%
+  select(ends_with("_n")) %>%
+  cor()
+
+corrplot(matrix)
 
 #analysis of My own skin tone is represented in this scale. (Primary DV)
 
+#1) compare mean of different scales at an overall level
+
+se_data %>%
+  summarise(across(paste0(primarylist, "_n"), ~ mean(., na.rm = TRUE)))
+
+#compare mean of different scales at a within market level
+
+#compare mean of same scales across markets - automate this using code below as a base
+
 #compare means across the markets - NEED TO ADD TOTAL ROW
 skin_rep_own_dat %>%
-  group_by(q83) %>%
+  group_by(market) %>%
   summarise(across(paste0(skin_rep_own, "_n"), ~ mean(., na.rm = TRUE)))
 
 # Perform one-way ANOVA
-skin_rep_own_anova <- aov(q14_n ~ q83, data = skin_rep_own_dat)
+skin_rep_own_anova <- aov(q14_n ~ market, data = skin_rep_own_dat)
 summary(skin_rep_own_anova)
 # Perform Tukey test
 tukey_results <- TukeyHSD(skin_rep_own_anova)
 # View results
 tukey_results
 
-#NEXT STEPS
-#compare mean of different scales at an overall level
-#compare mean of different scales at a within market level
-#compare mean of same scales across markets - automate this using code below as a base
 #compare mean of same scales across skin tone selection (recoding needed for skin tone selection)
 #compare mean of same scales across gender
 
 
 
-# # Specify the variables to analyze
-# skin_rep_own_vars <- paste0(skin_rep_own, "_n")
-#
-# # Perform ANOVA and Tukey test for each variable
-# anova_results <- map(skin_rep_own_vars, function(var) {
-#
-#   # Perform ANOVA
-#   anova_model <- aov(formula = as.formula(paste(var, "~ q83")), data = skin_rep_own_dat)
-#   anova_summary <- summary(anova_model)
-#
-#   # Perform Tukey test
-#   tukey_results <- TukeyHSD(anova_model)
-#
-#   # Return a list of results
-#   list(anova_summary = anova_summary, tukey_results = tukey_results)
-# })
-#
-# # View ANOVA results for the first variable
-# anova_results[[1]]$anova_summary
-#
-# # View Tukey test results for the first variable
-# anova_results[[]]$tukey_results
+# Specify the variables to analyze
+skin_rep_own_vars <- paste0(skin_rep_own, "_n")
+
+# Perform ANOVA and Tukey test for each variable
+anova_results <- map(skin_rep_own_vars, function(var) {
+
+  # Perform ANOVA
+  anova_model <- aov(formula = as.formula(paste(var, "~ q83")), data = skin_rep_own_dat)
+  anova_summary <- summary(anova_model)
+
+  # Perform Tukey test
+  tukey_results <- TukeyHSD(anova_model)
+
+  # Return a list of results
+  list(anova_summary = anova_summary, tukey_results = tukey_results)
+})
+
+# View ANOVA results for the first variable
+anova_results[[1]]$anova_summary
+
+# View Tukey test results for the first variable
+anova_results[[]]$tukey_results
