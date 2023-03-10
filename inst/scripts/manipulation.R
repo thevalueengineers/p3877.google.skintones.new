@@ -59,11 +59,11 @@ covariateslist <- c(age,gender,makeup_online,sun_precautions)
 se_data <- se_data %>%
     select(all_of(primarylist)) %>%
   map_dfc(~ case_when(
-    .x %in% c('Strongly agree' | 'Very easy') ~ 2,
-    .x %in% c('Somewhat agree' | 'Somewhat easy') ~ 1,
-    .x %in% c('Neither agree nor disagree' | 'Neither easy nor difficult') ~ 0,
-    .x %in% c('Somewhat disagree' | 'Somewhat difficult') ~ -1,
-    .x %in% c('Strongly disagree' | 'Very difficult') ~ -2,
+    .x %in% c('Strongly agree' , 'Very easy') ~ 2,
+    .x %in% c('Somewhat agree' , 'Somewhat easy') ~ 1,
+    .x %in% c('Neither agree nor disagree' , 'Neither easy nor difficult') ~ 0,
+    .x %in% c('Somewhat disagree' , 'Somewhat difficult') ~ -1,
+    .x %in% c('Strongly disagree' , 'Very difficult') ~ -2,
     TRUE ~ 0
   ), .cols = primarylist) %>%
   set_names(paste0(primarylist, "_n"))%>%
