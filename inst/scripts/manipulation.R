@@ -15,20 +15,55 @@ names(se_data) <- tolower(names(se_data))
 
 #create list of each of the questions for each group
 
-skin_rep_own <- c("q14","q27","qid46","q66")
-skin_rep_community <- c("q15","q28","q50","q65")
-skin_rep_country <- c("q16","q29","q49","q64")
-confident_picked_owntone <- c("q23","q36","q42","q57")
+dependent_vars <- list(
 
-closest_skin_tone <- c("q9","q37","q203","q199")
-easy_to_find_owntone <- c("q24","q39","q53","q69")
+scale_familiar = c("q10","q25","q40","q55"),
+skin_rep_own = c("q14","q27","qid46","q66"),
+skin_rep_community = c("q15","q28","q50","q65"),
+skin_rep_country = c("q16","q29","q49","q64"),
+too_many_options = c("q17","q30","q48","q63"),
+too_few_options = c("q19","q31","q47","q62"),
+scale_rep_light = c("q20","q33","q46","q61"),
+scale_rep_medium = c("q21","q32","q45","q60"),
+scale_rep_dark = c("q22","q34","q44","q59"),
+scale_rep_undertones = c("q18","q35","q43","q58"),
+closest_skin_tone = c("q9","q37","q203","q199"), #this doesn't follow the same variable set up
+easy_to_find_owntone = c("q24","q39","q53","q69"),
+confident_picked_owntone = c("q23","q36","q42","q57")
 
-too_many_options <- c("q17","q30","q48","q63")
-too_few_options <- c("q19","q31","q47","q62")
-scale_rep_light <- c("q20","q33","q46","q61")
-scale_rep_medium <- c("q21","q32","q45","q60")
-scale_rep_dark <- c("q22","q34","q44","q59")
-scale_rep_undertones <- c("q18","q35","q43","q58")
+)
+
+#pivot data
+
+pivot_func <- function(vars) {
+
+  se_data %>%
+    select(responseid,all_of(vars)) %>%
+    pivot_longer(all_of(vars),names_to = "scale")
+
+}
+
+new_dat <- map_dfr(dependent_vars,pivot_func,.id = "dependent") %>%
+  mutate(scale = case_when(
+    scale %in% c("q10","q14","q15","q16","q17","q19","q20","q21","q22","q18","q9","q24","q23") ~ "fenty",
+    scale %in% c("q25","q27","q28","q29","q30","q31","q33","q32","q34","q35","q37","q39","q36") ~ "fitzpatric",
+    scale %in% c("q40","qid46","q50","q49","q48","q47","q46","q45","q44","q43","q203","q53","q42") ~ "monk swatch",
+    scale %in% c("q55","q66","q65","q64","q63","q62","q61","q60","q59","q58","q199","q69","q57") ~ "monk orb",
+    TRUE ~ scale
+  )) %>%
+  pivot_wider(names_from = dependent, values_from = value)
+
+#merge in variables we need (e.g. covariates, market variable and demographics)
+
+new_dat <- se_data %>%
+  select(responseid,q2:q83,q7,q8,q71:q78) %>%
+  left_join(new_dat, by = "responseid") %>%
+  as_tibble() %>%
+  relocate(scale:confident_picked_owntone, .before = q2)
+
+#UP TO HERE - next steps: do recoding and then set up functions that do analysis
+
+#-----------
 
 #create list of all the groupings together for primary research question
 
@@ -38,7 +73,7 @@ primarylist <- c(skin_rep_own,skin_rep_community,skin_rep_country,confident_pick
 
 skin_replist  <- c(skin_rep_own,skin_rep_community,skin_rep_country,scale_rep_light,scale_rep_medium,scale_rep_dark,scale_rep_undertones)
 
-#convert subgroups to factors
+#convert subgroups to factors - ADD q7,q8
 
 se_data <- se_data %>%
   mutate(across(where(is.character), str_trim)) %>%
@@ -55,7 +90,7 @@ se_data <- se_data %>%
 
 covariateslist <- c(age,gender,makeup_online,sun_precautions)
 
-  #agreement scales (includin easy  to difficult) to numeric
+  #agreement scales (including easy  to difficult) to numeric
 se_data <- se_data %>%
     select(all_of(primarylist)) %>%
   map_dfc(~ case_when(
@@ -109,12 +144,12 @@ se_data %>%
 #compare mean of same scales across markets - automate this using code below as a base
 
 #compare means across the markets - NEED TO ADD TOTAL ROW
-skin_rep_own_dat %>%
+se_data %>%
   group_by(market) %>%
   summarise(across(paste0(skin_rep_own, "_n"), ~ mean(., na.rm = TRUE)))
 
 # Perform one-way ANOVA
-skin_rep_own_anova <- aov(q14_n ~ market, data = skin_rep_own_dat)
+skin_rep_own_anova <- aov(q14_n ~ market, data = se_data)
 summary(skin_rep_own_anova)
 # Perform Tukey test
 tukey_results <- TukeyHSD(skin_rep_own_anova)
@@ -123,8 +158,6 @@ tukey_results
 
 #compare mean of same scales across skin tone selection (recoding needed for skin tone selection)
 #compare mean of same scales across gender
-
-
 
 # Specify the variables to analyze
 skin_rep_own_vars <- paste0(skin_rep_own, "_n")
