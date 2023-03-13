@@ -8,6 +8,7 @@ library(car)
 library(tidyr)
 library(corrplot)
 library(ggplot2)
+library(forcats)
 
 tar_load(se_data)
 
@@ -111,7 +112,10 @@ nested_dat <- bind_rows(
   new_data %>%
     nest(data = -market),
   new_data %>%
-    nest(data = -c(market, scale)))
+    nest(data = -c(market, scale))
+  )%>%
+  select(market,scale, data) %>%
+  mutate(across(scale, ~forcats::fct_na_value_to_level(.x, "overall")))
 
 
 #check if there are significant differences among the three dependent variables based on the independent variables included in the model.
