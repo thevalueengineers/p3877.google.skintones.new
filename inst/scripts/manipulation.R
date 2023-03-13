@@ -13,6 +13,7 @@ tar_load(se_data)
 #names to lower
 names(se_data) <- tolower(names(se_data))
 
+
 #create list of each of the questions for each group
 
 dependent_vars <- list(
@@ -43,7 +44,7 @@ pivot_func <- function(vars) {
 
 }
 
-new_dat <- map_dfr(dependent_vars,pivot_func,.id = "dependent") %>%
+new_data <- map_dfr(dependent_vars,pivot_func,.id = "dependent") %>%
   mutate(scale = case_when(
     scale %in% c("q10","q14","q15","q16","q17","q19","q20","q21","q22","q18","q9","q24","q23") ~ "fenty",
     scale %in% c("q25","q27","q28","q29","q30","q31","q33","q32","q34","q35","q37","q39","q36") ~ "fitzpatric",
@@ -51,19 +52,45 @@ new_dat <- map_dfr(dependent_vars,pivot_func,.id = "dependent") %>%
     scale %in% c("q55","q66","q65","q64","q63","q62","q61","q60","q59","q58","q199","q69","q57") ~ "monk orb",
     TRUE ~ scale
   )) %>%
-  pivot_wider(names_from = dependent, values_from = value)
-
-#merge in variables we need (e.g. covariates, market variable and demographics)
-
-new_dat <- se_data %>%
-  select(responseid,q2:q83,q7,q8,q71:q78) %>%
-  left_join(new_dat, by = "responseid") %>%
+  pivot_wider(names_from = dependent, values_from = value) %>%
+  #merge in variables we need (e.g. covariates, market variable and demographics)
+  merge(se_data, by = "responseid") %>%
   as_tibble() %>%
-  relocate(scale:confident_picked_owntone, .before = q2)
+  #recoding and factors
+  mutate((across(where(is.character), str_trim))) %>%
+  mutate(age = as.numeric(q2),
+         gender = as.factor(ifelse(q3 == "Man","Male","Not Male")),
+         market = factor(q83),
+         makeup_online = factor(q72, levels = c("Yes", "No")),
+         sun_precautions = factor(q74, levels = c("Yes", "No"))) %>%
+  mutate(ownskintone = as.factor(ifelse(q7 %in% c("Very light","Light"),"Light","Not light")),
+         ownskintone = relevel(ownskintone, ref = "Light"),
+         friendssimilar = as.factor(ifelse(q8 == "Most of them have a similar skin tone to mine","Similar to mine","Different to mine")),
+         friendssimilar = relevel(friendssimilar, ref = "Similar to mine")
+         ) %>%
+  #recode agreement scales to numeric -2 to +2
+  mutate(across(all_of(names(dependent_vars)[-11]),
+                ~ case_when(
+                  .x %in% c('Strongly agree' , 'Very easy') ~ 2,
+                  .x %in% c('Somewhat agree' , 'Somewhat easy') ~ 1,
+                  .x %in% c('Neither agree nor disagree' , 'Neither easy nor difficult') ~ 0,
+                  .x %in% c('Somewhat disagree' , 'Somewhat difficult') ~ -1,
+                  .x %in% c('Strongly disagree' , 'Very difficult') ~ -2,
+                  TRUE ~ 0
+                ), .names = "{.col}_n")) %>%
+    #top box for agreement scales
+  mutate(across(all_of(names(dependent_vars)[-11]),
+                ~ case_when(
+                  .x %in% c('Strongly agree' , 'Very easy') ~ 1,
+                  TRUE ~ 0
+                ), .names = "{.col}_ntb"))
 
-#UP TO HERE - next steps: do recoding and then set up functions that do analysis
-
-#-----------
+# useful check for making sure recoding has worked
+# map(
+#   names(dependent_vars)[-11],
+#   ~select(check, all_of(c(.x, paste0(.x, "_ntb")))) %>%
+#     table(useNA = "always")
+# )
 
 #create list of all the groupings together for primary research question
 
@@ -73,56 +100,7 @@ primarylist <- c(skin_rep_own,skin_rep_community,skin_rep_country,confident_pick
 
 skin_replist  <- c(skin_rep_own,skin_rep_community,skin_rep_country,scale_rep_light,scale_rep_medium,scale_rep_dark,scale_rep_undertones)
 
-#convert subgroups to factors - ADD q7,q8
-
-se_data <- se_data %>%
-  mutate(across(where(is.character), str_trim)) %>%
-  #convert age to numeric
-  mutate(age=as.numeric(q2)) %>%
-  #recode gender
-  mutate(gender = as.factor(ifelse(q3 == "Man","Male","Not Male"))) %>%
-  #convert market to factor
-  mutate(market = factor(q83)) %>%
-  #makeuponline
-  mutate(makeup_online = factor(q72)) %>%
-  #sun precautions
-  mutate(sun_precautions = factor(q74))
-
 covariateslist <- c(age,gender,makeup_online,sun_precautions)
-
-  #agreement scales (including easy  to difficult) to numeric
-se_data <- se_data %>%
-    select(all_of(primarylist)) %>%
-  map_dfc(~ case_when(
-    .x %in% c('Strongly agree' , 'Very easy') ~ 2,
-    .x %in% c('Somewhat agree' , 'Somewhat easy') ~ 1,
-    .x %in% c('Neither agree nor disagree' , 'Neither easy nor difficult') ~ 0,
-    .x %in% c('Somewhat disagree' , 'Somewhat difficult') ~ -1,
-    .x %in% c('Strongly disagree' , 'Very difficult') ~ -2,
-    TRUE ~ 0
-  ), .cols = primarylist) %>%
-  set_names(paste0(primarylist, "_n"))%>%
-  bind_cols(se_data)
-
-#check recoding as worked - looks good - 48 columns
-
-select(se_data,ends_with("_n"))
-
-#create top box variables
-
-primarylist_n <-  paste0(primarylist, "_n")
-
-se_data <- se_data %>%
-  select(all_of(primarylist_n)) %>%
-  map_dfc(~ case_when(
-    .x == 2 ~1,
-    TRUE ~ 0
-  ), .cols = primarylist_n) %>%
-  set_names(paste0(primarylist_n, "tb")) %>%
-  bind_cols(se_data)
-
-#check the top boxes are lining up with 2s
-select(se_data,c(ends_with("_ntb")|ends_with("_n"))) %>%   select(order(readr::parse_number(names(.))))
 
 #correlations
 
