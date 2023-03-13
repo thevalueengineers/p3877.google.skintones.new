@@ -7,6 +7,7 @@ library(stats)
 library(car)
 library(tidyr)
 library(corrplot)
+library(ggplot2)
 
 tar_load(se_data)
 
@@ -28,7 +29,7 @@ scale_rep_light = c("q20","q33","q46","q61"),
 scale_rep_medium = c("q21","q32","q45","q60"),
 scale_rep_dark = c("q22","q34","q44","q59"),
 scale_rep_undertones = c("q18","q35","q43","q58"),
-closest_skin_tone = c("q9","q37","q203","q199"), #this doesn't follow the same variable set up
+closest_skin_tone = c("q9","q37","q203","q199"), #this doesn't follow the same variable set up. Need to discuss how to analyze this.
 easy_to_find_owntone = c("q24","q39","q53","q69"),
 confident_picked_owntone = c("q23","q36","q42","q57")
 
@@ -83,7 +84,10 @@ new_data <- map_dfr(dependent_vars,pivot_func,.id = "dependent") %>%
                 ~ case_when(
                   .x %in% c('Strongly agree' , 'Very easy') ~ 1,
                   TRUE ~ 0
-                ), .names = "{.col}_ntb"))
+                ), .names = "{.col}_ntb")) %>%
+  #replace NA age with column average
+  mutate(across(age, ~replace_na(., mean(., na.rm=TRUE))))
+
 
 # useful check for making sure recoding has worked
 # map(
@@ -92,70 +96,47 @@ new_data <- map_dfr(dependent_vars,pivot_func,.id = "dependent") %>%
 #     table(useNA = "always")
 # )
 
-#create list of all the groupings together for primary research question
+#checking effects on dependent variables below
+# skin_rep_own
+# skin_rep_community
+# skin_rep_country
+# confident_picked_owntone
 
-primarylist <- c(skin_rep_own,skin_rep_community,skin_rep_country,confident_picked_owntone,
-                 easy_to_find_owntone,too_many_options,too_few_options,
-                 scale_rep_light,scale_rep_medium,scale_rep_dark,scale_rep_undertones)
+independentlist <- list(age,gender,makeup_online,sun_precautions,ownskintone,friends_similar)
+dependentlist <- list(skin_rep_own_n,skin_rep_community_n,skin_rep_country_n,confident_picked_owntone_n)
 
-skin_replist  <- c(skin_rep_own,skin_rep_community,skin_rep_country,scale_rep_light,scale_rep_medium,scale_rep_dark,scale_rep_undertones)
+#then cut by: scale - then by: overall, across markets, gender
 
-covariateslist <- c(age,gender,makeup_online,sun_precautions)
+nested_dat <- bind_rows(
+  new_data %>%
+    nest(data = -market),
+  new_data %>%
+    nest(data = -c(market, scale)))
 
-#correlations
 
-matrix <- se_data %>%
-  select(ends_with("_n")) %>%
-  cor()
+#check if there are significant differences among the three dependent variables based on the independent variables included in the model.
 
-corrplot(matrix)
+mfit <- manova(cbind(skin_rep_own_n,skin_rep_community_n,skin_rep_country_n)
+               ~ age + gender + makeup_online + sun_precautions + ownskintone + friendssimilar, data = new_data)
+summary(mfit)
 
-#analysis of My own skin tone is represented in this scale. (Primary DV)
+#create a nested table with country and scale taken out to the upper level
 
-#1) compare mean of different scales at an overall level
+#check what variables are more strongly associated with skin rep own
+lmmodel <- lm(skin_rep_own_n ~ age + gender + makeup_online + sun_precautions + ownskintone + friendssimilar,data = new_data)
+summary(lmmodel)
 
-se_data %>%
-  summarise(across(paste0(primarylist, "_n"), ~ mean(., na.rm = TRUE)))
+#check what variables are more strongly associated with skin rep own as a top box
+glm <- glm(skin_rep_own_ntb ~ age + gender + makeup_online + sun_precautions + ownskintone + friendssimilar,data = new_data, family = binomial)
+summary(glm)
 
-#compare mean of different scales at a within market level
+p1 <-  new_data %>% group_by(scale) %>% summarise(m=weighted.mean(skin_rep_own_n),sd=sd(skin_rep_own_n),n=n()) %>% mutate(se=sd/sqrt(n)) %>%
+  ggplot(aes(fill=scale,x=na.omit(scale),y=m,label=round(m,2))) +
+  geom_col(position='dodge',width=0.5) +
+  geom_label(position=position_dodge(0.5), vjust=3, show.legend=FALSE) +
+  ylab('Represents own skin tone (+2:strong agree, -2:strong disagree)') +
+  xlab('Skin tone scale - overall')+
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
 
-#compare mean of same scales across markets - automate this using code below as a base
-
-#compare means across the markets - NEED TO ADD TOTAL ROW
-se_data %>%
-  group_by(market) %>%
-  summarise(across(paste0(skin_rep_own, "_n"), ~ mean(., na.rm = TRUE)))
-
-# Perform one-way ANOVA
-skin_rep_own_anova <- aov(q14_n ~ market, data = se_data)
-summary(skin_rep_own_anova)
-# Perform Tukey test
-tukey_results <- TukeyHSD(skin_rep_own_anova)
-# View results
-tukey_results
-
-#compare mean of same scales across skin tone selection (recoding needed for skin tone selection)
-#compare mean of same scales across gender
-
-# Specify the variables to analyze
-skin_rep_own_vars <- paste0(skin_rep_own, "_n")
-
-# Perform ANOVA and Tukey test for each variable
-anova_results <- map(skin_rep_own_vars, function(var) {
-
-  # Perform ANOVA
-  anova_model <- aov(formula = as.formula(paste(var, "~ q83")), data = skin_rep_own_dat)
-  anova_summary <- summary(anova_model)
-
-  # Perform Tukey test
-  tukey_results <- TukeyHSD(anova_model)
-
-  # Return a list of results
-  list(anova_summary = anova_summary, tukey_results = tukey_results)
-})
-
-# View ANOVA results for the first variable
-anova_results[[1]]$anova_summary
-
-# View Tukey test results for the first variable
-anova_results[[]]$tukey_results
+p1 + geom_errorbar(aes(ymin=m-se, ymax=m+se),width=.5,position=position_dodge(0.5))
